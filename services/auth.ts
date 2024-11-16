@@ -3,16 +3,23 @@ import bcrypt from 'bcrypt'
 import { Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { generateToken } from '../utils/token'
+
 export const getUser = async (email: string) => {
     if(!email) {
         throw new Error('Email is not provided')
     }
 
-  return await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
     where: {
       email: email
     }
-  })
+    });
+    if(!user)
+    {
+        throw new Error('Invalid user');
+    }
+    user.password = ''
+    return user;
 }
 export const isUserUnique = async (email: string, username: string) => { 
     if(!email || !username)
@@ -43,19 +50,25 @@ export const createUser = async (email: string, password: string, username: stri
     }
 
     const hashedPassword = await bcrypt.hash(password, +process.env.SALT_ROUNDS)
-    return await prisma.user.create({
+    const user = await prisma.user.create({
     data : {
         username: username,
         email: email,
         password: hashedPassword
     },
-  })
+    })
+    user.password = ''
+    return user;
 }
 export const authenticateUser = async (email: string, password: string) => {
     if(!email || !password) {
         throw new Error('Email or password is not provided')
     }
-    const user = await getUser(email)
+    const user = await prisma.user.findFirst({
+        where: {
+            email: email
+        }
+    })
     if(user === null || user === undefined) {
         throw new Error('Authentication failed')
     }
@@ -68,10 +81,11 @@ export const authenticateUser = async (email: string, password: string) => {
 }
 export const loginUser = (user: { email: string }, res: Response) =>{
     if(user.email === undefined) {
-        throw new Error('User email is not defined')
+        throw new Error('User email is not defined');
     }
 
-    const token = generateToken(user.email)
-    res.header('Authorization', token)
-    return token
+    const token = generateToken(user.email);
+    res.cookie('authToken', token);
+
+    return token;
 } 

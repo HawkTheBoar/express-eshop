@@ -1,5 +1,5 @@
 import { sign } from 'jsonwebtoken';
-import { IncomingHttpHeaders } from 'http';
+import { Request } from 'express';
 
 
 export const generateToken = (email: string) => {
@@ -15,13 +15,16 @@ export const generateToken = (email: string) => {
     }
     return sign({ email }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXP.toString() });
 }
-export const getTokenFromHeader = (header: IncomingHttpHeaders) => {
-    if(!header) {
-        throw new Error('Header is not provided')
+export const getTokenFromCookie = (request: Request) => {
+    if(!request) {
+        throw new Error('Request is not provided')
     }
-    const authHeader = header['authorization'];
-    if(authHeader === undefined) {
+    let authCookie = undefined;
+    if(request.cookies)
+        authCookie = request.cookies.authToken;
+    
+    if(authCookie === undefined) {
         throw new Error('Authorization header is not present')
     }
-    return authHeader.split(' ')[1];
+    return authCookie;
 }
