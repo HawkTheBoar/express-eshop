@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { generateToken } from '../utils/token'
+import isValidEmail from '../utils/email';
 
 export const getUser = async (email: string) => {
     if(!email) {
@@ -40,7 +41,9 @@ export const createUser = async (email: string, password: string, username: stri
     if(!email || !password || !username) {
         throw new Error('Email, password or username is not provided')
     }
-
+    if(!isValidEmail(email)) {
+        throw new Error('Invalid email')
+    }
     if(await isUserUnique(email, username)) {
         throw new Error('User already exists')
     }
