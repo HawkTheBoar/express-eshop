@@ -4,10 +4,11 @@ import { Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { generateToken } from '../utils/token'
 import isValidEmail from '../utils/email';
+import { InvalidCredentialsError, HttpError, InsufficientPermissionsError, MissingCredentialsError, NotFoundError } from '../models/errors'
 
 export const getUser = async (email: string) => {
     if(!email) {
-        throw new Error('Email is not provided')
+        throw new MissingCredentialsError({message: 'Email is required.'})
     }
 
     const user = await prisma.user.findUnique({
@@ -17,14 +18,14 @@ export const getUser = async (email: string) => {
     });
     if(!user)
     {
-        throw new Error('Invalid user');
+        throw new NotFoundError({ message: 'User not found'})
     }
     user.password = ''
     return user;
 }
 export const isUserUnique = async (email: string, username: string) => { 
     if(!email || !username)
-        throw new Error('Email or username is not provided')
+        throw new MissingCredentialsError({message: 'Email and password are required.'})
     const userByEmail = await prisma.user.findFirst({
         where: {
             email: email
@@ -39,13 +40,13 @@ export const isUserUnique = async (email: string, username: string) => {
 }
 export const createUser = async (email: string, password: string, username: string) => {
     if(!email || !password || !username) {
-        throw new Error('Email, password or username is not provided')
+        throw new MissingCredentialsError({ message: 'Email, password and username is required' })
     }
     if(!isValidEmail(email)) {
-        throw new Error('Invalid email')
+        throw new InvalidCredentialsError({ message: 'Invalid email provided.'})
     }
     if(await isUserUnique(email, username)) {
-        throw new Error('User already exists')
+        throw new HttpError(400, 'User alredy exists');
     }
 
     if(process.env.SALT_ROUNDS === undefined) {
@@ -65,7 +66,10 @@ export const createUser = async (email: string, password: string, username: stri
 }
 export const authenticateUser = async (email: string, password: string) => {
     if(!email || !password) {
-        throw new Error('Email or password is not provided')
+        throw new MissingCredentialsError({message: 'Email and password are required.'})
+    }
+    if(!isValidEmail(email)) {
+        throw new InvalidCredentialsError({ message: 'Invalid email provided.'});
     }
     const user = await prisma.user.findFirst({
         where: {
@@ -73,18 +77,18 @@ export const authenticateUser = async (email: string, password: string) => {
         }
     })
     if(user === null || user === undefined) {
-        throw new Error('Authentication failed')
+        throw new InvalidCredentialsError()
     }
     const match = await bcrypt.compare(password, user.password)
     if(match) {
         return user
     } else {
-        throw new Error('Authentication failed')
+        throw new InvalidCredentialsError()
     }
 }
 export const loginUser = (user: { email: string }, res: Response) =>{
     if(user.email === undefined) {
-        throw new Error('User email is not defined');
+        throw new MissingCredentialsError();
     }
 
     const token = generateToken(user.email);

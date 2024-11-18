@@ -31,7 +31,8 @@ router.post('/login', async (req: Request, res: Response, next) => {
         res.redirect(nextUrl);
     }
     catch(err: any){
-        res.status(401).redirect(`/auth/login/?next=${nextUrl}&error=${err.message}`);
+        const errorCode = err.errorCode | 401;
+        res.status(errorCode).redirect(`/auth/login/?next=${nextUrl}&error=${err.message}`);
     }
         
         
@@ -47,7 +48,8 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
 
     }
     catch(err: any){
-        res.status(400).redirect(`/auth/register?error=${err.message}`);
+        const errorCode = err.errorCode | 400;
+        res.status(errorCode).redirect(`/auth/register?error=${err.message}`);
         next(err);
     }
 
